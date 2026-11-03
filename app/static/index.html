@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document Q&amp;A</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: light-dark(#f7f7f5, #171716);
+    --panel: light-dark(#ffffff, #21211f);
+    --text: light-dark(#1f1f1d, #ecebe7);
+    --muted: light-dark(#6c6b66, #a09e97);
+    --line: light-dark(#e3e2dd, #363632);
+    --accent: light-dark(#2f5d50, #7fc4af);
+    --on-accent: light-dark(#ffffff, #10211c);
+    --danger: light-dark(#a33a2c, #ec8d7f);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100dvh; display: grid; grid-template-columns: 300px 1fr;
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  aside {
+    border-right: 1px solid var(--line); padding: 20px 16px;
+    display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0;
+  }
+  h1 { font-size: 17px; margin: 0; }
+  h2 { font-size: 12px; margin: 6px 0 0; color: var(--muted); font-weight: 600; }
+  label.drop {
+    display: block; padding: 22px 12px; text-align: center; cursor: pointer;
+    border: 1px dashed var(--muted); border-radius: 8px; color: var(--muted);
+  }
+  label.drop.over, label.drop:hover, label.drop:focus-within { border-color: var(--accent); color: var(--accent); }
+  label.drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  #status { font-size: 13px; color: var(--muted); min-height: 20px; margin: 0; }
+  #status.error { color: var(--danger); }
+  #documents { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  #documents li {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  }
+  #documents span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #documents button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 4px; }
+  #documents button:hover { color: var(--danger); }
+  main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  #messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .message { max-width: 720px; width: 100%; margin: 0 auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .message.user { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .message.error { color: var(--danger); }
+  .message.pending::after { content: "Reading your documents…"; color: var(--muted); }
+  details { margin-top: 10px; font-size: 13px; color: var(--muted); white-space: normal; }
+  details blockquote { margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--line); white-space: pre-wrap; }
+  details strong { display: block; }
+  .empty { margin: auto; color: var(--muted); text-align: center; max-width: 340px; }
+  form { padding: 14px 24px 20px; border-top: 1px solid var(--line); }
+  form div { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; }
+  textarea {
+    flex: 1; resize: none; padding: 10px 12px; font: inherit; color: inherit;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  }
+  form button {
+    padding: 0 18px; border: 0; border-radius: 8px; font: inherit; font-weight: 600;
+    background: var(--accent); color: var(--on-accent); cursor: pointer;
+  }
+  form button:disabled { opacity: .5; cursor: default; }
+  @media (max-width: 720px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40dvh; }
+    #messages { padding: 16px; }
+    form { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Document Q&amp;A</h1>
+  <label class="drop" id="drop">
+    Drop files here or click to choose
+    <input id="file" type="file" multiple accept=".pdf,.docx,.txt,.md">
+  </label>
+  <p id="status" role="status"></p>
+  <h2>Your documents</h2>
+  <ul id="documents"></ul>
+</aside>
+<main>
+  <div id="messages" aria-live="polite">
+    <p class="empty" id="empty">Upload a PDF, Word, text, or Markdown file, then ask about it here.</p>
+  </div>
+  <form id="ask">
+    <div>
+      <textarea id="question" rows="2" placeholder="Ask about your documents" aria-label="Question" required></textarea>
+      <button id="send">Ask</button>
+    </div>
+  </form>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let conversationId = null;
+
+function setStatus(text, isError = false) {
+  $("status").textContent = text;
+  $("status").classList.toggle("error", isError);
+}
+
+async function errorMessage(response) {
+  try {
+    const { detail } = await response.json();
+    if (typeof detail === "string") return detail;
+  } catch {}
+  return `Request failed (${response.status}).`;
+}
+
+async function refreshDocuments() {
+  const response = await fetch("/api/documents");
+  if (!response.ok) return setStatus(await errorMessage(response), true);
+  const list = $("documents");
+  list.replaceChildren();
+  for (const document_ of await response.json()) {
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = document_.filename;
+    name.title = document_.filename;
+    const remove = document.createElement("button");
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", `Delete ${document_.filename}`);
+    remove.onclick = async () => {
+      const result = await fetch(`/api/documents/${document_.id}`, { method: "DELETE" });
+      if (!result.ok) setStatus(await errorMessage(result), true);
+      refreshDocuments();
+    };
+    item.append(name, remove);
+    list.append(item);
+  }
+}
+
+async function upload(files) {
+  for (const file of files) {
+    setStatus(`Indexing ${file.name}…`);
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch("/api/documents", { method: "POST", body });
+    if (!response.ok) {
+      setStatus(`${file.name}: ${await errorMessage(response)}`, true);
+      await refreshDocuments();
+      return;
+    }
+    await refreshDocuments();
+  }
+  setStatus(`Indexed ${files.length} file${files.length === 1 ? "" : "s"}.`);
+}
+
+function addMessage(role, text = "") {
+  $("empty")?.remove();
+  const element = document.createElement("div");
+  element.className = `message ${role}`;
+  element.textContent = text;
+  $("messages").append(element);
+  element.scrollIntoView({ block: "end" });
+  return element;
+}
+
+function renderSources(message, sources) {
+  if (!sources.length) return;
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = `${sources.length} passage${sources.length === 1 ? "" : "s"} read`;
+  details.append(summary);
+  for (const source of sources) {
+    const title = document.createElement("strong");
+    title.textContent = source.page ? `${source.filename}, p. ${source.page}` : source.filename;
+    const quote = document.createElement("blockquote");
+    quote.textContent = source.excerpt;
+    details.append(title, quote);
+  }
+  message.append(details);
+}
+
+async function ask(question) {
+  addMessage("user", question);
+  const message = addMessage("assistant pending");
+  const answer = message.appendChild(document.createTextNode(""));
+  const sources = [];
+  const fail = (text) => { message.classList.add("error"); answer.data += text; };
+
+  const response = await fetch("/api/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(conversationId ? { question, conversation_id: conversationId } : { question }),
+  });
+  if (!response.ok) {
+    message.classList.remove("pending");
+    return fail(await errorMessage(response));
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop();
+    for (const frame of frames) {
+      const [eventLine, dataLine] = frame.split("\n");
+      const event = eventLine.slice("event: ".length);
+      const data = JSON.parse(dataLine.slice("data: ".length));
+      if (event === "text") {
+        message.classList.remove("pending");
+        answer.data += data.text;
+        message.scrollIntoView({ block: "end" });
+      } else if (event === "source") {
+        sources.push(data);
+      } else if (event === "error") {
+        message.classList.remove("pending");
+        fail(data.message);
+      } else if (event === "done") {
+        conversationId = data.conversation_id;
+      }
+    }
+  }
+  message.classList.remove("pending");
+  renderSources(message, sources);
+}
+
+$("file").addEventListener("change", (event) => {
+  upload([...event.target.files]);
+  event.target.value = "";
+});
+
+for (const name of ["dragover", "dragleave", "drop"]) {
+  $("drop").addEventListener(name, (event) => {
+    event.preventDefault();
+    $("drop").classList.toggle("over", name === "dragover");
+    if (name === "drop") upload([...event.dataTransfer.files]);
+  });
+}
+
+$("ask").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const question = $("question").value.trim();
+  if (!question) return;
+  $("question").value = "";
+  $("send").disabled = true;
+  try {
+    await ask(question);
+  } catch {
+    addMessage("error", "The connection was lost. Try again.");
+  } finally {
+    $("send").disabled = false;
+    $("question").focus();
+  }
+});
+
+$("question").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    $("ask").requestSubmit();
+  }
+});
+
+refreshDocuments();
+</script>
+</body>
+</html>
