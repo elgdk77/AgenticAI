@@ -42,6 +42,7 @@ Question  →  Claude agent  ⇄  list_documents / search_documents  →  cited 
 | `app/agent.py` | The LangChain agent, its tools, and its system prompt |
 | `app/main.py` | FastAPI routes and workspace cookies |
 | `app/static/index.html` | The web UI |
+| `app/static/how-it-works.html` | Animated explainer of the architecture, served at `/how-it-works` |
 
 ## API
 

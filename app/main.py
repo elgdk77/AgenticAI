@@ -124,6 +124,11 @@ async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/how-it-works", include_in_schema=False)
+async def how_it_works() -> FileResponse:
+    return FileResponse(STATIC_DIR / "how-it-works.html")
+
+
 @app.post("/api/documents", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile, workspace: Workspace, store: Store, settings: AppSettings

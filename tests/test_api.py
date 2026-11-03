@@ -147,3 +147,13 @@ def test_chat_without_api_key_returns_503(make_client):
 
     assert response.status_code == 503
     assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+
+
+def test_landing_page_links_to_how_it_works(make_client):
+    client = make_client()
+
+    assert 'href="/how-it-works"' in client.get("/").text
+
+    response = client.get("/how-it-works")
+    assert response.status_code == 200
+    assert "<title>Inside Document Q&amp;A</title>" in response.text

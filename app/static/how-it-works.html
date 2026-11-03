@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside Document Q&amp;A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: one reading column; each section pairs an animated diagram with the steps it plays through. */
+  :root {
+    --bg: #f3f6f4;
+    --surface: #ffffff;
+    --ink: #15201c;
+    --muted: #5a6964;
+    --line: #d6dfdb;
+    --line-strong: #9fb0a9;
+    --accent: #2f5d50;
+    --accent-soft: #e1ede8;
+    --ext: #4a58a8;
+    --ext-soft: #e6e8f6;
+    --warn: #9a4b1f;
+    --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+    --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111614; --surface: #19211e; --ink: #e5ece9; --muted: #97a6a0;
+      --line: #2b3632; --line-strong: #55665f; --accent: #7fc4af; --accent-soft: #1f322b;
+      --ext: #a3adf5; --ext-soft: #23263d; --warn: #e7a47c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111614; --surface: #19211e; --ink: #e5ece9; --muted: #97a6a0;
+    --line: #2b3632; --line-strong: #55665f; --accent: #7fc4af; --accent-soft: #1f322b;
+    --ext: #a3adf5; --ext-soft: #23263d; --warn: #e7a47c; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.6 var(--font-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 72px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 64px; }
+  h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.05; font-weight: 700; }
+  h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.15; font-weight: 650; }
+  h3 { font-size: 17px; font-weight: 600; }
+  p { margin: 0; max-width: 66ch; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+  code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+  .eyebrow {
+    font: 500 12px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent);
+  }
+  header { display: grid; gap: 18px; }
+  .back { color: var(--accent); font-size: 14px; text-decoration: none; justify-self: start; }
+  .back:hover { text-decoration: underline; }
+  .lede { font-size: 18px; color: var(--muted); }
+  nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav a {
+    display: inline-block; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+    color: var(--ink); text-decoration: none; font-size: 14px; background: var(--surface);
+  }
+  nav a:hover { border-color: var(--accent); color: var(--accent); }
+  a:focus-visible, button:focus-visible, li[tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  section { display: grid; gap: 20px; scroll-margin-top: 24px; }
+  .section-head { display: grid; gap: 10px; }
+  .section-head p { color: var(--muted); }
+
+  .stage {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px; display: grid; gap: 14px; min-width: 0;
+  }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .scroll svg { display: block; width: 100%; min-width: 760px; height: auto; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .controls .spacer { flex: 1; }
+  button {
+    font: 500 14px/1 var(--font-body); color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer;
+  }
+  button:hover { border-color: var(--line-strong); }
+  button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .counter { font: 500 13px/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* SVG vocabulary */
+  svg text { font-family: var(--font-body); }
+  .c { text-anchor: middle; }
+  .t { fill: var(--ink); font: 600 15px var(--font-display); }
+  .s { fill: var(--muted); font: 400 11.5px var(--font-mono); }
+  .lbl { fill: var(--muted); font: 500 11px var(--font-mono); letter-spacing: 0.04em; }
+  .box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; }
+  .box.ext { fill: var(--ext-soft); stroke: var(--ext); }
+  .wire { fill: none; stroke: var(--line-strong); stroke-width: 1.5; transition: stroke 0.4s, stroke-width 0.4s, opacity 0.4s; }
+  .ah { fill: var(--line-strong); }
+  .boundary { fill: none; stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 6 6; opacity: 0.7; }
+  .bound-fill { fill: var(--accent-soft); opacity: 0.45; }
+  .dot { fill: var(--accent); opacity: 0; transition: opacity 0.4s; }
+  .dot.back { fill: var(--ext); }
+
+  /* Architecture flows */
+  .node { transition: opacity 0.4s; }
+  .arch[data-flow="upload"] .node:not(.upload),
+  .arch[data-flow="ask"] .node:not(.ask) { opacity: 0.35; }
+  .arch[data-flow="upload"] .wire:not(.upload),
+  .arch[data-flow="ask"] .wire:not(.ask) { opacity: 0.25; }
+  .arch[data-flow="upload"] .wire.upload,
+  .arch[data-flow="ask"] .wire.ask { stroke: var(--accent); stroke-width: 2; }
+  .arch[data-flow="upload"] .dot.upload,
+  .arch[data-flow="ask"] .dot.ask { opacity: 1; }
+  .arch .wlabel { transition: opacity 0.4s; }
+  .arch[data-flow="upload"] .wlabel.ask { opacity: 0; }
+  .flows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .flow-card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px;
+    transition: border-color 0.3s, background 0.3s; min-width: 0;
+  }
+  .flow-card p { font-size: 14.5px; color: var(--muted); }
+  .flow-card.on { border-color: var(--accent); background: var(--accent-soft); }
+  .flow-card.on p { color: var(--ink); }
+
+  /* Stepper diagrams */
+  .colbg { fill: transparent; stroke: transparent; transition: fill 0.4s, stroke 0.4s; }
+  [data-hl] .box, .colbg, .chip rect { transition: fill 0.4s, stroke 0.4s; }
+  .hl .colbg { fill: var(--accent-soft); stroke: var(--accent); }
+  .hl > .box, .hl.box { stroke: var(--accent); stroke-width: 2.2; fill: var(--accent-soft); }
+  .wire.hl { stroke: var(--accent); stroke-width: 2.4; }
+  .hl .ah, .ah.hl { fill: var(--accent); }
+  text.hl { fill: var(--accent); }
+  .paper { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; }
+  .fold { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
+  .txtline { stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; }
+  .bar { fill: var(--line-strong); opacity: 0.55; }
+  .chunk { fill: var(--surface); stroke: var(--accent); stroke-width: 1.4; }
+  .overlap { fill: var(--accent); opacity: 0.55; }
+  .vec { fill: var(--accent); }
+  .row { fill: var(--accent); opacity: 0.7; }
+  .track { stroke: var(--line); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+  .token { transition: transform 0.7s cubic-bezier(.6,.05,.3,1); }
+  .token circle.core { fill: var(--accent); }
+  .token circle.ring { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0.5; transform-origin: center; transform-box: fill-box; animation: ring 1.6s ease-out infinite; }
+  @keyframes ring { from { transform: scale(0.6); opacity: 0.7; } to { transform: scale(1.9); opacity: 0; } }
+  [data-show] { opacity: 0; transform: translateY(6px); transition: opacity 0.45s, transform 0.45s; transform-box: fill-box; }
+  [data-show].shown { opacity: 1; transform: none; }
+  .lane { stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 4 5; }
+  .drop { stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 2 4; fill: none; }
+  .chip rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+  .chip text { fill: var(--muted); font: 500 12px var(--font-mono); }
+  .chip.hl rect { fill: var(--accent); stroke: var(--accent); }
+  .chip.hl text { fill: var(--surface); }
+  .dia { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; }
+  .dia.hl { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.2; }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .steps li {
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer;
+    display: grid; gap: 4px; align-content: start; transition: border-color 0.3s, background 0.3s; min-width: 0;
+  }
+  .steps li:hover { border-color: var(--line-strong); }
+  .steps li .n { font: 500 11px/1 var(--font-mono); color: var(--muted); letter-spacing: 0.08em; }
+  .steps li h3 { font-size: 15.5px; }
+  .steps li p { font-size: 14px; color: var(--muted); }
+  .steps li.on { border-color: var(--accent); background: var(--accent-soft); }
+  .steps li.on .n { color: var(--accent); }
+  .steps li.on p { color: var(--ink); }
+
+  /* Stream demo */
+  .demo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pane { border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; min-height: 320px; }
+  .pane .eyebrow { color: var(--muted); }
+  .log { font: 12.5px/1.55 var(--font-mono); display: grid; gap: 8px; overflow-x: auto; }
+  .ev { display: grid; gap: 1px; animation: rise 0.35s ease-out both; }
+  .ev .k { color: var(--accent); font-weight: 500; }
+  .ev.source .k { color: var(--ext); }
+  .ev .d { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .q { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14.5px; }
+  .answer { font-size: 15px; min-height: 3em; }
+  .answer .cite { color: var(--accent); font-family: var(--font-mono); font-size: 0.82em; }
+  .caret { display: inline-block; width: 7px; height: 1em; background: var(--accent); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .srcs { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .srcs div { border-left: 2px solid var(--ext); padding-left: 8px; animation: rise 0.35s ease-out both; }
+  .srcs strong { color: var(--ink); font-weight: 600; display: block; }
+  .note { font-size: 13px; color: var(--muted); }
+
+  /* Workspaces */
+  .wsA { animation: focusA 6s ease-in-out infinite; }
+  .wsB { animation: focusA 6s ease-in-out infinite; animation-delay: -3s; }
+  @keyframes focusA { 0%, 42% { opacity: 1; } 50%, 92% { opacity: 0.22; } 100% { opacity: 1; } }
+  .rowA { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+  .rowB { fill: var(--ext-soft); stroke: var(--ext); stroke-width: 1; }
+  .rowtext { fill: var(--ink); font: 400 11.5px var(--font-mono); }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .fact { border-top: 2px solid var(--accent); padding-top: 10px; display: grid; gap: 4px; min-width: 0; }
+  .fact p { font-size: 14.5px; color: var(--muted); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 560px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 500 11px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td.code { font-family: var(--font-mono); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td.status { color: var(--warn); }
+
+  @media (max-width: 760px) {
+    .demo { grid-template-columns: 1fr; }
+    .pane { min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <a class="back" href="/">← Back to Document Q&amp;A</a>
+    <span class="eyebrow">AgenicAI · Document Q&amp;A Agent</span>
+    <h1>How a question becomes a cited answer</h1>
+    <p class="lede">You upload files, then ask about them. The server turns each file into searchable chunks on your own machine, and a Claude agent searches those chunks, as many times as it needs, before answering with citations.</p>
+    <nav aria-label="Sections">
+      <ul>
+        <li><a href="#map">The big picture</a></li>
+        <li><a href="#upload">Uploading a file</a></li>
+        <li><a href="#ask">Asking a question</a></li>
+        <li><a href="#stream">The answer stream</a></li>
+        <li><a href="#workspaces">Workspaces</a></li>
+        <li><a href="#errors">Errors and limits</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- 1. Architecture -->
+  <section id="map">
+    <div class="section-head">
+      <span class="eyebrow">The big picture</span>
+      <h2>Two paths through one server</h2>
+      <p>Everything inside the dashed line runs on your server, including the embedding model. Text crosses to Anthropic only when the agent sends your question and the passages it retrieved.</p>
+    </div>
+    <div class="stage">
+      <div class="controls" role="group" aria-label="Choose a path">
+        <button type="button" id="flow-upload" data-flow="upload" aria-pressed="false">Upload a file</button>
+        <button type="button" id="flow-ask" data-flow="ask" aria-pressed="true">Ask a question</button>
+      </div>
+      <div class="scroll">
+        <svg class="arch" id="arch" data-flow="ask" viewBox="0 0 1000 460" role="img" aria-label="Architecture: browser, FastAPI, ingestion, agent, document store, Chroma, and the Anthropic API">
+          <rect class="bound-fill" x="180" y="20" width="620" height="420" rx="18"/>
+          <rect class="boundary" x="180" y="20" width="620" height="420" rx="18"/>
+          <text class="lbl" x="200" y="424">YOUR SERVER · RUNS LOCALLY</text>
+
+          <path id="w1" class="wire upload ask" d="M160 230 H210"/>
+          <path id="w2" class="wire upload" d="M360 215 C385 215 375 85 400 85"/>
+          <path id="w3" class="wire upload" d="M560 85 C590 85 585 215 610 215"/>
+          <path id="w4" class="wire upload ask" d="M695 190 V136"/>
+          <path id="w5" class="wire ask" d="M360 245 C385 245 375 375 400 375"/>
+          <path id="w6" class="wire ask" d="M520 340 C520 290 580 245 610 245"/>
+          <path id="w7" class="wire ask" d="M560 362 H840"/>
+          <path id="w8" class="wire ask" d="M840 392 H560"/>
+
+          <text class="lbl wlabel ask" x="700" y="352" text-anchor="middle">QUESTION + PASSAGES</text>
+          <text class="lbl wlabel ask" x="700" y="412" text-anchor="middle">TOOL CALLS + ANSWER</text>
+          <text class="lbl wlabel ask" x="590" y="312">TOOLS</text>
+
+          <g class="node upload ask">
+            <rect class="box" x="20" y="190" width="140" height="80" rx="12"/>
+            <text class="t c" x="90" y="222">Browser</text>
+            <text class="s c" x="90" y="242">index.html</text>
+            <text class="s c" x="90" y="258">+ workspace cookie</text>
+          </g>
+          <g class="node upload ask">
+            <rect class="box" x="210" y="190" width="150" height="80" rx="12"/>
+            <text class="t c" x="285" y="222">FastAPI</text>
+            <text class="s c" x="285" y="242">main.py</text>
+            <text class="s c" x="285" y="258">routes · cookies</text>
+          </g>
+          <g class="node upload">
+            <rect class="box" x="400" y="50" width="160" height="70" rx="12"/>
+            <text class="t c" x="480" y="80">Ingestion</text>
+            <text class="s c" x="480" y="100">extract · chunk</text>
+          </g>
+          <g class="node ask">
+            <rect class="box" x="400" y="340" width="160" height="70" rx="12"/>
+            <text class="t c" x="480" y="370">DocumentAgent</text>
+            <text class="s c" x="480" y="390">agent.py · LangGraph</text>
+          </g>
+          <g class="node upload ask">
+            <rect class="box" x="610" y="190" width="170" height="80" rx="12"/>
+            <text class="t c" x="695" y="222">DocumentStore</text>
+            <text class="s c" x="695" y="242">store.py</text>
+            <text class="s c" x="695" y="258">FastEmbed, on CPU</text>
+          </g>
+          <g class="node upload ask">
+            <path class="box" d="M620 62 a75 12 0 0 0 150 0 v62 a75 12 0 0 1 -150 0 z"/>
+            <ellipse class="box" cx="695" cy="62" rx="75" ry="12"/>
+            <text class="t c" x="695" y="100">Chroma</text>
+            <text class="s c" x="695" y="118">data/chroma</text>
+          </g>
+          <g class="node ask">
+            <rect class="box ext" x="840" y="340" width="140" height="70" rx="12"/>
+            <text class="t c" x="910" y="370">Claude</text>
+            <text class="s c" x="910" y="390">Anthropic API</text>
+          </g>
+          <g id="dots"></g>
+        </svg>
+      </div>
+      <div class="flows">
+        <div class="flow-card" data-card="upload">
+          <h3>Upload a file</h3>
+          <p>The browser posts the file. Ingestion pulls out the text and splits it, the store embeds each chunk locally, and Chroma saves it to disk. Claude is never involved.</p>
+        </div>
+        <div class="flow-card on" data-card="ask">
+          <h3>Ask a question</h3>
+          <p>The agent sends your question to Claude. Claude calls search tools, the store looks up matching chunks in Chroma, and the answer streams back to the browser as it is written.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Upload pipeline -->
+  <section id="upload">
+    <div class="section-head">
+      <span class="eyebrow">Uploading a file · POST /api/documents</span>
+      <h2>From file to searchable chunks</h2>
+      <p>One upload runs these five steps in a worker thread, so a large PDF does not block other requests.</p>
+    </div>
+    <div class="stage stepper" data-steps="5" data-pos='[[100,268],[300,268],[500,268],[700,268],[900,268]]'>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 290" role="img" aria-label="Upload pipeline: upload, extract, split, embed, store">
+          <defs>
+            <marker id="ah-up" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10z"/></marker>
+          </defs>
+          <line class="track" x1="100" y1="268" x2="900" y2="268"/>
+
+          <g data-hl="1">
+            <rect class="colbg" x="15" y="50" width="170" height="194" rx="14"/>
+            <text class="lbl c" x="100" y="34">UPLOAD</text>
+            <path class="paper" d="M78 78 h34 l16 16 v66 h-50 z"/>
+            <path class="fold" d="M112 78 v16 h16"/>
+            <line class="txtline" x1="87" y1="110" x2="119" y2="110"/>
+            <line class="txtline" x1="87" y1="120" x2="119" y2="120"/>
+            <line class="txtline" x1="87" y1="130" x2="112" y2="130"/>
+            <line class="txtline" x1="87" y1="140" x2="119" y2="140"/>
+            <text class="t c" x="100" y="192">report.pdf</text>
+            <text class="s c" x="100" y="211">PDF · DOCX · TXT · MD</text>
+            <text class="s c" x="100" y="227">up to 25 MB</text>
+          </g>
+          <line class="wire" data-hl="2" x1="188" y1="120" x2="212" y2="120" marker-end="url(#ah-up)"/>
+
+          <g data-hl="2">
+            <rect class="colbg" x="215" y="50" width="170" height="194" rx="14"/>
+            <text class="lbl c" x="300" y="34">EXTRACT</text>
+            <g data-show="2"><rect class="paper" x="252" y="88" width="30" height="42" rx="3"/><text class="s c" x="267" y="114">p.1</text></g>
+            <g data-show="2" style="transition-delay:.12s"><rect class="paper" x="285" y="88" width="30" height="42" rx="3"/><text class="s c" x="300" y="114">p.2</text></g>
+            <g data-show="2" style="transition-delay:.24s"><rect class="paper" x="318" y="88" width="30" height="42" rx="3"/><text class="s c" x="333" y="114">p.3</text></g>
+            <text class="t c" x="300" y="192">(page, text) pairs</text>
+            <text class="s c" x="300" y="211">pypdf · python-docx</text>
+            <text class="s c" x="300" y="227">blank pages dropped</text>
+          </g>
+          <line class="wire" data-hl="3" x1="388" y1="120" x2="412" y2="120" marker-end="url(#ah-up)"/>
+
+          <g data-hl="3">
+            <rect class="colbg" x="415" y="50" width="170" height="194" rx="14"/>
+            <text class="lbl c" x="500" y="34">SPLIT</text>
+            <rect class="bar" x="425" y="74" width="150" height="10" rx="2"/>
+            <g data-show="3"><rect class="chunk" x="425" y="96" width="60" height="16" rx="3"/></g>
+            <g data-show="3" style="transition-delay:.15s"><rect class="chunk" x="470" y="118" width="60" height="16" rx="3"/><rect class="overlap" x="470" y="118" width="15" height="16"/></g>
+            <g data-show="3" style="transition-delay:.3s"><rect class="chunk" x="515" y="140" width="60" height="16" rx="3"/><rect class="overlap" x="515" y="140" width="15" height="16"/></g>
+            <text class="t c" x="500" y="192">1,000-char chunks</text>
+            <text class="s c" x="500" y="211">150 chars overlap</text>
+            <text class="s c" x="500" y="227">filename + page kept</text>
+          </g>
+          <line class="wire" data-hl="4" x1="588" y1="120" x2="612" y2="120" marker-end="url(#ah-up)"/>
+
+          <g data-hl="4">
+            <rect class="colbg" x="615" y="50" width="170" height="194" rx="14"/>
+            <text class="lbl c" x="700" y="34">EMBED</text>
+            <line class="track" x1="636" y1="122" x2="764" y2="122"/>
+            <g data-show="4" id="vec"></g>
+            <text class="t c" x="700" y="192">384-number vector</text>
+            <text class="s c" x="700" y="211">bge-small-en-v1.5</text>
+            <text class="s c" x="700" y="227">runs on the server</text>
+          </g>
+          <line class="wire" data-hl="5" x1="788" y1="120" x2="812" y2="120" marker-end="url(#ah-up)"/>
+
+          <g data-hl="5">
+            <rect class="colbg" x="815" y="50" width="170" height="194" rx="14"/>
+            <text class="lbl c" x="900" y="34">STORE</text>
+            <path class="box" d="M845 78 a55 10 0 0 0 110 0 v74 a55 10 0 0 1 -110 0 z"/>
+            <ellipse class="box" cx="900" cy="78" rx="55" ry="10"/>
+            <rect class="row" data-show="5" x="862" y="100" width="76" height="7" rx="3"/>
+            <rect class="row" data-show="5" style="transition-delay:.12s" x="862" y="114" width="76" height="7" rx="3"/>
+            <rect class="row" data-show="5" style="transition-delay:.24s" x="862" y="128" width="76" height="7" rx="3"/>
+            <text class="t c" x="900" y="192">Chroma</text>
+            <text class="s c" x="900" y="211">id: &lt;doc&gt;-&lt;n&gt;</text>
+            <text class="s c" x="900" y="227">tagged by workspace</text>
+          </g>
+
+          <g class="token"><circle class="ring" r="9"/><circle class="core" r="6"/></g>
+        </svg>
+      </div>
+      <div class="controls">
+        <button type="button" data-act="prev" aria-label="Previous step">Back</button>
+        <button type="button" data-act="play" aria-pressed="true">Pause</button>
+        <button type="button" data-act="next" aria-label="Next step">Next</button>
+        <span class="spacer"></span>
+        <span class="counter" aria-live="polite"></span>
+      </div>
+      <ol class="steps">
+        <li tabindex="0"><span class="n">STEP 1</span><h3>Upload</h3><p>The browser posts the file. The server reads at most 25 MB plus one byte, so an oversized file is refused with 413 before it is fully read. Any folder path in the filename is dropped.</p></li>
+        <li tabindex="0"><span class="n">STEP 2</span><h3>Extract text</h3><p>PDFs are read page by page with pypdf. Word files give paragraphs plus table rows joined with <code>|</code>. Text and Markdown are decoded as UTF-8, falling back to Latin-1. A file with no text, like a scan, is refused with 422.</p></li>
+        <li tabindex="0"><span class="n">STEP 3</span><h3>Split</h3><p>Each page is split into chunks of about 1,000 characters. Neighbouring chunks share 150 characters, so a sentence cut at a boundary still appears whole in one of them. Each chunk remembers its filename and page.</p></li>
+        <li tabindex="0"><span class="n">STEP 4</span><h3>Embed locally</h3><p>FastEmbed runs <code>BAAI/bge-small-en-v1.5</code> on the server's CPU and turns each chunk into a vector of 384 numbers. Document text is never sent to an embedding API.</p></li>
+        <li tabindex="0"><span class="n">STEP 5</span><h3>Store</h3><p>The document ID is the first 32 hex characters of SHA-256 over your workspace and the file bytes. Chunks are saved as <code>&lt;id&gt;-0</code>, <code>&lt;id&gt;-1</code>, and so on. Uploading the same file again replaces it instead of duplicating it.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 3. Agent loop -->
+  <section id="ask">
+    <div class="section-head">
+      <span class="eyebrow">Asking a question · POST /api/chat/stream</span>
+      <h2>The agent searches until it has enough</h2>
+      <p>The agent is a LangGraph loop around Claude with two tools. Claude decides when to search, what to search for, and when the passages it has settle the question.</p>
+    </div>
+    <div class="stage stepper" data-steps="8" data-pos='[[85,150],[260,150],[440,150],[620,14],[440,150],[620,130],[795,150],[935,150]]'>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 360" role="img" aria-label="Agent loop flowchart: question, load thread, Claude, decision, tools, answer, done">
+          <defs>
+            <marker id="ah-ask" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10z"/></marker>
+          </defs>
+
+          <path class="wire" data-hl="2" d="M150 180 H188" marker-end="url(#ah-ask)"/>
+          <path class="wire" data-hl="3" d="M330 180 H368" marker-end="url(#ah-ask)"/>
+          <path class="wire" data-hl="4 6" d="M510 180 H558" marker-end="url(#ah-ask)"/>
+          <path class="wire" data-hl="4" d="M620 130 V80" marker-end="url(#ah-ask)"/>
+          <path class="wire" data-hl="5" d="M510 46 H440 V148" marker-end="url(#ah-ask)"/>
+          <path class="wire" data-hl="7" d="M680 180 H728" marker-end="url(#ah-ask)"/>
+          <path class="wire" data-hl="8" d="M860 180 H888" marker-end="url(#ah-ask)"/>
+
+          <text class="lbl" data-hl="4" x="632" y="110">YES</text>
+          <text class="lbl c" data-hl="7" x="704" y="170">NO</text>
+          <text class="lbl" data-hl="5" x="446" y="38">PASSAGES</text>
+
+          <g data-hl="1"><rect class="box" x="20" y="150" width="130" height="60" rx="30"/>
+            <text class="t c" x="85" y="176">Question</text><text class="s c" x="85" y="194">+ conversation_id</text></g>
+          <g data-hl="2"><rect class="box" x="190" y="150" width="140" height="60" rx="10"/>
+            <text class="t c" x="260" y="176">Load thread</text><text class="s c" x="260" y="194">InMemorySaver</text></g>
+          <g data-hl="3 5"><rect class="box" x="370" y="150" width="140" height="60" rx="10"/>
+            <text class="t c" x="440" y="176">Claude</text><text class="s c" x="440" y="194">adaptive thinking</text></g>
+          <polygon class="dia" data-hl="4 6" points="620,130 680,180 620,230 560,180"/>
+          <text class="t c" x="620" y="185" style="font-size:13.5px">Enough?</text>
+          <g data-hl="4"><rect class="box" x="510" y="14" width="220" height="64" rx="10"/>
+            <text class="t c" x="620" y="40">Tools</text><text class="s c" x="620" y="60">search_documents · top 6</text></g>
+          <g data-hl="7"><rect class="box" x="730" y="150" width="130" height="60" rx="10"/>
+            <text class="t c" x="795" y="176">Answer</text><text class="s c" x="795" y="194">cites [file, p. n]</text></g>
+          <g data-hl="8"><rect class="box" x="890" y="150" width="90" height="60" rx="30"/>
+            <text class="t c" x="935" y="185">Done</text></g>
+
+          <line class="lane" x1="20" y1="310" x2="980" y2="310"/>
+          <text class="lbl" x="20" y="346">STREAM TO THE BROWSER (SERVER-SENT EVENTS)</text>
+          <path class="drop" d="M440 210 V296"/>
+          <path class="drop" d="M795 210 V296"/>
+          <path class="drop" d="M935 210 V296"/>
+          <g class="chip" data-hl="5"><rect x="400" y="296" width="80" height="28" rx="14"/><text class="c" x="440" y="314">source</text></g>
+          <g class="chip" data-hl="7"><rect x="763" y="296" width="64" height="28" rx="14"/><text class="c" x="795" y="314">text</text></g>
+          <g class="chip" data-hl="8"><rect x="903" y="296" width="64" height="28" rx="14"/><text class="c" x="935" y="314">done</text></g>
+
+          <g class="token"><circle class="ring" r="10"/><circle class="core" r="7"/></g>
+        </svg>
+      </div>
+      <div class="controls">
+        <button type="button" data-act="prev" aria-label="Previous step">Back</button>
+        <button type="button" data-act="play" aria-pressed="true">Pause</button>
+        <button type="button" data-act="next" aria-label="Next step">Next</button>
+        <span class="spacer"></span>
+        <span class="counter" aria-live="polite"></span>
+      </div>
+      <ol class="steps">
+        <li tabindex="0"><span class="n">STEP 1</span><h3>Ask</h3><p>The browser sends your question and a conversation ID. A new chat gets a fresh ID; follow-up questions send the same one back.</p></li>
+        <li tabindex="0"><span class="n">STEP 2</span><h3>Resume the conversation</h3><p>LangGraph loads earlier turns from memory under <code>workspace:conversation_id</code>, so Claude sees the whole chat. Memory is cleared when the server restarts.</p></li>
+        <li tabindex="0"><span class="n">STEP 3</span><h3>Claude thinks</h3><p>Claude reads the system prompt: answer only from the documents, search before answering, cite every claim, and treat document text as content, never as instructions.</p></li>
+        <li tabindex="0"><span class="n">STEP 4</span><h3>Search</h3><p>Claude calls <code>search_documents</code> with a query, optionally limited to one document found with <code>list_documents</code>. The query is embedded locally and Chroma returns the 6 closest chunks in your workspace.</p></li>
+        <li tabindex="0"><span class="n">STEP 5</span><h3>Read the passages</h3><p>Results come back wrapped as <code>&lt;passage source="report.pdf, p. 3"&gt;</code>. Each new passage is also sent to the browser as a <code>source</code> event.</p></li>
+        <li tabindex="0"><span class="n">STEP 6</span><h3>Decide</h3><p>If the passages do not settle the question, Claude searches again with different wording. This loop is what makes it an agent rather than a single lookup.</p></li>
+        <li tabindex="0"><span class="n">STEP 7</span><h3>Answer</h3><p>Claude writes the answer with inline citations like <code>[report.pdf, p. 3]</code>. Text streams to the browser as <code>text</code> events while it is written.</p></li>
+        <li tabindex="0"><span class="n">STEP 8</span><h3>Done</h3><p>A <code>done</code> event carries the conversation ID. If Claude finished without writing any text, the browser gets an <code>error</code> event instead.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 4. Stream -->
+  <section id="stream">
+    <div class="section-head">
+      <span class="eyebrow">The answer stream</span>
+      <h2>What the browser receives</h2>
+      <p>The streaming endpoint sends four kinds of event. The page renders text as it arrives and collects sources under the answer. <code>POST /api/chat</code> returns the same content as one JSON response.</p>
+    </div>
+    <div class="stage">
+      <div class="controls">
+        <button type="button" id="replay">Replay</button>
+        <span class="spacer"></span>
+        <span class="note">Example data</span>
+      </div>
+      <div class="demo">
+        <div class="pane">
+          <span class="eyebrow">Server sends</span>
+          <div class="log" id="log" aria-live="off"></div>
+        </div>
+        <div class="pane">
+          <span class="eyebrow">You see</span>
+          <div class="q">What drove the revenue increase?</div>
+          <div class="answer" id="answer"></div>
+          <div class="srcs" id="srcs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Workspaces -->
+  <section id="workspaces">
+    <div class="section-head">
+      <span class="eyebrow">Workspaces</span>
+      <h2>Every browser gets a private shelf</h2>
+      <p>There are no accounts. Middleware gives each browser a random UUID in an HTTP-only cookie, and every read, search and delete in the store filters on it. All workspaces share one Chroma collection.</p>
+    </div>
+    <div class="stage">
+      <div class="scroll">
+        <svg viewBox="0 0 1000 260" role="img" aria-label="Two browsers with different cookies see only their own rows in a shared Chroma collection">
+          <defs>
+            <marker id="ah-ws" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10z"/></marker>
+          </defs>
+          <g class="wsA">
+            <rect class="box" x="20" y="40" width="190" height="70" rx="12" style="stroke:var(--accent)"/>
+            <text class="t c" x="115" y="70">Browser A</text>
+            <text class="s c" x="115" y="90">cookie 3f9a2c…</text>
+            <path class="wire" d="M210 75 C250 75 260 120 298 122" marker-end="url(#ah-ws)"/>
+          </g>
+          <g class="wsB">
+            <rect class="box" x="20" y="150" width="190" height="70" rx="12" style="stroke:var(--ext)"/>
+            <text class="t c" x="115" y="180">Browser B</text>
+            <text class="s c" x="115" y="200">cookie c71e08…</text>
+            <path class="wire" d="M210 185 C250 185 260 140 298 138" marker-end="url(#ah-ws)"/>
+          </g>
+          <rect class="box" x="300" y="95" width="200" height="70" rx="12"/>
+          <text class="t c" x="400" y="124">assign_workspace</text>
+          <text class="s c" x="400" y="144">valid UUID, or a new one</text>
+          <path class="wire" d="M500 130 H568" marker-end="url(#ah-ws)"/>
+          <text class="lbl c" x="534" y="120">FILTER</text>
+
+          <rect class="box" x="570" y="14" width="410" height="232" rx="14"/>
+          <text class="lbl" x="590" y="40">ONE CHROMA COLLECTION</text>
+          <g class="wsA">
+            <rect class="rowA" x="590" y="56" width="370" height="26" rx="6"/><text class="rowtext" x="602" y="73">3f9a… · q3-report.pdf · p.4</text>
+            <rect class="rowA" x="590" y="118" width="370" height="26" rx="6"/><text class="rowtext" x="602" y="135">3f9a… · q3-report.pdf · p.7</text>
+            <rect class="rowA" x="590" y="180" width="370" height="26" rx="6"/><text class="rowtext" x="602" y="197">3f9a… · board-notes.docx</text>
+          </g>
+          <g class="wsB">
+            <rect class="rowB" x="590" y="87" width="370" height="26" rx="6"/><text class="rowtext" x="602" y="104">c71e… · lease.pdf · p.2</text>
+            <rect class="rowB" x="590" y="149" width="370" height="26" rx="6"/><text class="rowtext" x="602" y="166">c71e… · lease.pdf · p.9</text>
+            <rect class="rowB" x="590" y="211" width="370" height="26" rx="6"/><text class="rowtext" x="602" y="228">c71e… · notes.md</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="facts">
+      <div class="fact"><h3>Cookie is the key</h3><p>Clearing cookies loses access to that workspace's documents, and anyone holding the cookie can read them. Set <code>COOKIE_SECURE=true</code> behind HTTPS.</p></div>
+      <div class="fact"><h3>Documents are untrusted</h3><p>The system prompt tells Claude to report instructions found inside a document as content, never to follow them.</p></div>
+      <div class="fact"><h3>Conversations live in memory</h3><p>They are lost on restart and are not shared between worker processes, so run a single worker. Documents persist in <code>data/chroma</code>.</p></div>
+    </div>
+  </section>
+
+  <!-- 6. Errors and limits -->
+  <section id="errors">
+    <div class="section-head">
+      <span class="eyebrow">Errors and limits</span>
+      <h2>What can go wrong, and what you see</h2>
+      <p>Failures are mapped to messages that are safe to show. On the streaming endpoint they arrive as an <code>error</code> event followed by <code>done</code>.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Situation</th><th>Status</th><th>Message</th></tr></thead>
+        <tbody>
+          <tr><td>File over 25 MB</td><td class="code status">413</td><td>Files can be at most 25 MB.</td></tr>
+          <tr><td>Unsupported type, scanned or locked PDF</td><td class="code status">422</td><td>Explains which formats work, or that OCR is needed</td></tr>
+          <tr><td>Deleting a document that is not in your workspace</td><td class="code status">404</td><td>Document not found.</td></tr>
+          <tr><td>No <code>ANTHROPIC_API_KEY</code> on the server</td><td class="code status">503</td><td>Uploads still work; chat is unavailable</td></tr>
+          <tr><td>API key rejected</td><td class="code status">503</td><td>The server's Anthropic API key was rejected.</td></tr>
+          <tr><td>Rate limited by the API</td><td class="code status">429</td><td>Rate limited. Try again shortly.</td></tr>
+          <tr><td>Claude finished with no text</td><td class="code status">502</td><td>The model returned no answer. Try rephrasing.</td></tr>
+          <tr><td>Any other API failure</td><td class="code status">502</td><td>The model request failed. Try again.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="code">app/main.py</td><td>FastAPI routes, workspace cookie middleware, error mapping, SSE stream</td></tr>
+          <tr><td class="code">app/ingestion.py</td><td>Extracts text from PDF, Word, text and Markdown, then splits it into chunks</td></tr>
+          <tr><td class="code">app/store.py</td><td>Local FastEmbed embeddings and the Chroma store, partitioned by workspace</td></tr>
+          <tr><td class="code">app/agent.py</td><td>The LangChain agent, its two tools, system prompt and streaming</td></tr>
+          <tr><td class="code">app/config.py</td><td>Settings from <code>.env</code>: model, effort, chunk size, result count, upload limit</td></tr>
+          <tr><td class="code">app/static/index.html</td><td>The web UI: upload, document list, streaming chat</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+
+  // Architecture: moving dots along each wire.
+  const arch = document.getElementById("arch");
+  const dots = document.getElementById("dots");
+  const specs = [
+    ["w1", "upload", false], ["w2", "upload", false], ["w3", "upload", false], ["w4", "upload", false],
+    ["w1", "ask", false], ["w1", "ask back", true], ["w5", "ask", false], ["w5", "ask back", true],
+    ["w6", "ask", false], ["w6", "ask back", true], ["w4", "ask", false], ["w4", "ask back", true],
+    ["w7", "ask", false], ["w8", "ask back", false],
+  ];
+  specs.forEach(([id, cls, reverse], k) => {
+    for (let i = 0; i < 2; i++) {
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("r", "4");
+      c.setAttribute("class", "dot " + cls);
+      const m = document.createElementNS(NS, "animateMotion");
+      m.setAttribute("dur", "2.4s");
+      m.setAttribute("repeatCount", "indefinite");
+      m.setAttribute("begin", `${-(i * 1.2 + (k % 3) * 0.4)}s`);
+      if (reverse) { m.setAttribute("keyPoints", "1;0"); m.setAttribute("keyTimes", "0;1"); m.setAttribute("calcMode", "linear"); }
+      const mp = document.createElementNS(NS, "mpath");
+      mp.setAttribute("href", "#" + id);
+      m.appendChild(mp);
+      c.appendChild(m);
+      dots.appendChild(c);
+    }
+  });
+  if (reduced && arch.pauseAnimations) arch.pauseAnimations();
+  document.querySelectorAll("[data-flow]").forEach(btn => {
+    if (btn.tagName !== "BUTTON") return;
+    btn.addEventListener("click", () => {
+      const flow = btn.dataset.flow;
+      arch.dataset.flow = flow;
+      document.querySelectorAll("button[data-flow]").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      document.querySelectorAll(".flow-card").forEach(c => c.classList.toggle("on", c.dataset.card === flow));
+    });
+  });
+
+  // Embedding bars.
+  const vec = document.getElementById("vec");
+  [18, -10, 26, 8, -22, 14, -6, 30, -16, 10, 22, -12, 6, -20].forEach((h, i) => {
+    const r = document.createElementNS(NS, "rect");
+    r.setAttribute("class", "vec");
+    r.setAttribute("x", 640 + i * 9);
+    r.setAttribute("width", 6);
+    r.setAttribute("rx", 1.5);
+    r.setAttribute("y", h > 0 ? 122 - h : 122);
+    r.setAttribute("height", Math.abs(h));
+    vec.appendChild(r);
+  });
+
+  // Steppers.
+  document.querySelectorAll(".stepper").forEach(root => {
+    const n = +root.dataset.steps;
+    const pos = JSON.parse(root.dataset.pos);
+    const items = [...root.querySelectorAll(".steps li")];
+    const hl = [...root.querySelectorAll("[data-hl]")];
+    const shows = [...root.querySelectorAll("[data-show]")];
+    const token = root.querySelector(".token");
+    const counter = root.querySelector(".counter");
+    const play = root.querySelector('[data-act="play"]');
+    let at = 1, timer = null, playing = !reduced, visible = false;
+
+    const render = () => {
+      items.forEach((li, k) => li.classList.toggle("on", k + 1 === at));
+      hl.forEach(el => el.classList.toggle("hl", el.dataset.hl.split(" ").includes(String(at))));
+      shows.forEach(el => el.classList.toggle("shown", at >= +el.dataset.show));
+      const [x, y] = pos[at - 1];
+      token.style.transform = `translate(${x}px, ${y}px)`;
+      counter.textContent = `${at} / ${n}`;
+      play.textContent = playing ? "Pause" : "Play";
+      play.setAttribute("aria-pressed", String(playing));
+    };
+    const go = i => { at = ((i - 1 + n) % n) + 1; render(); };
+    const schedule = () => {
+      clearTimeout(timer);
+      if (playing && visible) timer = setTimeout(() => { go(at + 1); schedule(); }, at === n ? 4200 : 3000);
+    };
+    const stop = () => { playing = false; render(); schedule(); };
+
+    root.querySelector('[data-act="next"]').addEventListener("click", () => { stop(); go(at + 1); });
+    root.querySelector('[data-act="prev"]').addEventListener("click", () => { stop(); go(at - 1); });
+    play.addEventListener("click", () => { playing = !playing; render(); schedule(); });
+    items.forEach((li, k) => {
+      const pick = () => { stop(); go(k + 1); };
+      li.addEventListener("click", pick);
+      li.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+    });
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; schedule(); }, { threshold: 0.3 }).observe(root);
+    render();
+  });
+
+  // Stream demo.
+  const events = [
+    ["source", { filename: "q3-report.pdf", page: 4, excerpt: "Subscription revenue rose 18% year over year…" }],
+    ["source", { filename: "q3-report.pdf", page: 7, excerpt: "Churn in Europe fell to 2.1% after the pricing change…" }],
+    ["text", { text: "Revenue grew mainly because subscription sales rose 18% " }],
+    ["text", { text: "[q3-report.pdf, p. 4]" }],
+    ["text", { text: ", helped by lower churn in Europe after the pricing change " }],
+    ["text", { text: "[q3-report.pdf, p. 7]." }],
+    ["done", { conversation_id: "9f2c41d0…" }],
+  ];
+  const log = document.getElementById("log");
+  const answer = document.getElementById("answer");
+  const srcs = document.getElementById("srcs");
+  let streamTimer = null, answerText = "";
+  const esc = s => s.replace(/[&<>]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[ch]);
+  const paint = (writing) => {
+    answer.innerHTML = esc(answerText).replace(/\[[^\]]+\]/g, m => `<span class="cite">${m}</span>`) + (writing ? '<span class="caret"></span>' : "");
+  };
+  const apply = ([kind, data], last) => {
+    const ev = document.createElement("div");
+    ev.className = "ev " + kind;
+    ev.innerHTML = `<span class="k">event: ${kind}</span><span class="d">data: ${esc(JSON.stringify(data))}</span>`;
+    log.appendChild(ev);
+    if (kind === "source") {
+      const s = document.createElement("div");
+      s.innerHTML = `<strong>${esc(data.filename)}, p. ${data.page}</strong>${esc(data.excerpt)}`;
+      srcs.appendChild(s);
+    }
+    if (kind === "text") answerText += data.text;
+    paint(!last && kind !== "done");
+  };
+  const runStream = () => {
+    clearTimeout(streamTimer);
+    log.textContent = ""; srcs.textContent = ""; answerText = "";
+    if (reduced) { events.forEach((e, i) => apply(e, i === events.length - 1)); return; }
+    paint(true);
+    let i = 0;
+    const tick = () => {
+      apply(events[i], i === events.length - 1);
+      i++;
+      if (i < events.length) streamTimer = setTimeout(tick, events[i][0] === "text" ? 650 : 900);
+      else streamTimer = setTimeout(runStream, 5000);
+    };
+    streamTimer = setTimeout(tick, 600);
+  };
+  document.getElementById("replay").addEventListener("click", runStream);
+  // Show the finished stream at rest, then animate once the section is on screen.
+  events.forEach((e, i) => apply(e, i === events.length - 1));
+  let started = false;
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && !started && !reduced) { started = true; runStream(); }
+  }, { threshold: 0.4 }).observe(document.getElementById("stream"));
+})();
+</script>
+</body>
+</html>
