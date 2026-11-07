@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path, PurePath
 from typing import Annotated
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 import anthropic
 from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.agent import AnswerSource, AnswerText, DocumentAgent, EmptyAnswerError, build_model
@@ -58,6 +59,35 @@ async def assign_workspace(request: Request, call_next):
             secure=get_settings().cookie_secure,
         )
     return response
+
+
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+# Registered after assign_workspace, so it runs first and rejected requests never touch a workspace.
+@app.middleware("http")
+async def reject_cross_site_writes(request: Request, call_next):
+    """Block cross-site CSRF, including from sibling subdomains that SameSite=Lax lets through.
+
+    Browsers send Sec-Fetch-Site (or at least Origin) on every POST and DELETE, so a write
+    with neither header comes from a non-browser client such as curl, which CSRF can't drive.
+    """
+    if request.method not in SAFE_METHODS and not _is_same_origin(request):
+        return JSONResponse(
+            {"detail": "Cross-site requests are not allowed."}, status.HTTP_403_FORBIDDEN
+        )
+    return await call_next(request)
+
+
+def _is_same_origin(request: Request) -> bool:
+    fetch_site = request.headers.get("sec-fetch-site")
+    if fetch_site is not None:
+        return fetch_site in {"same-origin", "none"}
+    origin = request.headers.get("origin")
+    if origin is None:
+        return True
+    # Compare hosts only: behind a TLS-terminating proxy the app sees http while Origin says https.
+    return urlsplit(origin).netloc == request.headers.get("host")
 
 
 def _is_uuid(value: str) -> bool:

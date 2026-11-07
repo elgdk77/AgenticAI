@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from langchain_core.messages import AIMessage
 
 from tests.conftest import scripted_model
@@ -62,6 +63,38 @@ def test_workspaces_are_isolated(make_client):
     assert other.get("/api/documents").json() == []
     assert other.delete(f"/api/documents/{document_id}").status_code == 404
     assert len(owner.get("/api/documents").json()) == 1
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Sec-Fetch-Site": "cross-site"},
+        {"Sec-Fetch-Site": "same-site"},  # a sibling subdomain, which SameSite=Lax allows
+        {"Origin": "https://evil.example"},
+        {"Origin": "null"},
+    ],
+)
+def test_cross_site_writes_are_rejected(make_client, headers):
+    client = make_client()
+    document_id = upload(client).json()["id"]
+
+    rejected_upload = client.post(
+        "/api/documents", files={"file": ("x.txt", b"injected")}, headers=headers
+    )
+    rejected_delete = client.delete(f"/api/documents/{document_id}", headers=headers)
+
+    assert rejected_upload.status_code == rejected_delete.status_code == 403
+    assert [d["id"] for d in client.get("/api/documents", headers=headers).json()] == [document_id]
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{"Sec-Fetch-Site": "same-origin"}, {"Origin": "http://testserver"}, {}],
+)
+def test_same_origin_and_non_browser_writes_are_allowed(make_client, headers):
+    assert make_client().post(
+        "/api/documents", files={"file": ("notes.txt", b"hi")}, headers=headers
+    ).status_code == 201
 
 
 def test_invalid_workspace_cookie_is_replaced(make_client):
